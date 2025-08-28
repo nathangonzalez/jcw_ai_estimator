@@ -8,6 +8,7 @@ on:
 jobs:
   scaffold:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -15,12 +16,11 @@ jobs:
       - name: Create scaffold files (no CI file)
         run: |
           set -euo pipefail
-          ROOT=$(pwd)
+          ROOT="$(pwd)"
           echo "Creating scaffold in $ROOT"
 
-          mkdir -p services/api/app services/plan-ai/app services/bim/app services/gis/app services/web/pages infra/traefik scripts templates .github/workflows || true
+          mkdir -p services/api/app services/plan-ai/app services/bim/app services/gis/app services/web/pages infra/traefik scripts templates
 
-          # README
           cat > README.md <<'EOF'
 # Coastal BIM AI (scaffold inside jcw_ai_estimator)
 
@@ -33,7 +33,6 @@ Quick start:
 4) Web UI: http://localhost:3000  | API: http://localhost:8000/docs
 EOF
 
-          # .env.example
           cat > .env.example <<'EOF'
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
@@ -46,7 +45,6 @@ S3_REGION=us-east-1
 JWT_SECRET=change_me
 EOF
 
-          # .gitignore
           cat > .gitignore <<'EOF'
 # Python
 __pycache__/
@@ -69,7 +67,7 @@ models/*
 .DS_Store
 EOF
 
-          # services/api
+          mkdir -p services/api/app
           cat > services/api/app/main.py <<'PY'
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -96,127 +94,32 @@ def fl_site_stub():
     return {"nfhl": "use WMS/FeatureServer", "cccl": "DEP GIS", "slr": "NOAA SLR"}
 PY
 
-          cat > services/api/requirements.txt <<'REQ'
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-boto3==1.35.0
-redis==5.0.7
-httpx==0.27.2
-pydantic==2.8.2
-REQ
-
-          cat > services/api/Dockerfile <<'DF'
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY app app
-EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
-DF
-
-          # plan-ai placeholder
+          mkdir -p services/plan-ai/app
           cat > services/plan-ai/app/worker.py <<'PY'
-# Minimal placeholder: wire up LayoutParser/Tesseract later.
+# Minimal placeholder for Plan-AI
 from fastapi import FastAPI
 app = FastAPI(title="Plan-AI Service")
-
 @app.get("/health")
 def health(): return {"ok": True}
 PY
 
-          cat > services/plan-ai/requirements.txt <<'REQ'
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-layoutparser==0.3.4
-pytesseract==0.3.13
-opencv-python-headless==4.10.0.84
-pdf2image==1.17.0
-Pillow==10.4.0
-numpy==2.1.1
-REQ
-
-          cat > services/plan-ai/Dockerfile <<'DF'
-FROM python:3.11-slim
-RUN apt-get update && apt-get install -y tesseract-ocr poppler-utils && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY app app
-EXPOSE 8010
-CMD ["uvicorn", "app.worker:app", "--host", "0.0.0.0", "--port", "8010"]
-DF
-
-          # bim placeholder
+          mkdir -p services/bim/app
           cat > services/bim/app/main.py <<'PY'
 from fastapi import FastAPI
 app = FastAPI(title="BIM/QTO Service")
-
 @app.get("/health")
 def health(): return {"ok": True}
 PY
 
-          cat > services/bim/requirements.txt <<'REQ'
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-REQ
-
-          cat > services/bim/Dockerfile <<'DF'
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt || true
-COPY app app
-EXPOSE 8020
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8020"]
-DF
-
-          # gis placeholder
+          mkdir -p services/gis/app
           cat > services/gis/app/main.py <<'PY'
 from fastapi import FastAPI
-import httpx
 app = FastAPI(title="GIS Service (FL Coastal)")
-
 @app.get("/health")
 def health(): return {"ok": True}
 PY
 
-          cat > services/gis/requirements.txt <<'REQ'
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-httpx==0.27.2
-shapely==2.0.6
-pyproj==3.6.1
-REQ
-
-          cat > services/gis/Dockerfile <<'DF'
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY app app
-EXPOSE 8030
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8030"]
-DF
-
-          # web minimal
-          cat > services/web/package.json <<'JSON'
-{
-  "name": "coastal-web",
-  "private": true,
-  "scripts": {
-    "dev": "next dev -p 3000",
-    "build": "next build",
-    "start": "next start -p 3000"
-  },
-  "dependencies": {
-    "next": "14.2.5",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
-  }
-}
-JSON
-
+          mkdir -p services/web/pages
           cat > services/web/pages/index.js <<'JS'
 export default function Home() {
   return (
@@ -228,28 +131,7 @@ export default function Home() {
 }
 JS
 
-          cat > services/web/Dockerfile <<'DF'
-FROM node:20-alpine
-WORKDIR /app
-COPY package.json .
-RUN npm install
-COPY pages pages
-EXPOSE 3000
-CMD ["npm", "run", "dev"]
-DF
-
-          # infra: traefik + compose
           mkdir -p infra/traefik
-          cat > infra/traefik/traefik.yml <<'TF'
-entryPoints:
-  web:
-    address: ":80"
-providers:
-  docker: {}
-api:
-  dashboard: true
-TF
-
           cat > infra/docker-compose.yml <<'DC'
 version: "3.9"
 services:
@@ -270,16 +152,10 @@ services:
     ports: ["9000:9000","9001:9001"]
     volumes: ["minio_data:/data"]
 
-  cache:
-    image: redis:7-alpine
-    ports: ["6379:6379"]
-
   api:
     build: ../services/api
-    environment:
-      S3_ENDPOINT: ${S3_ENDPOINT:-http://obj:9000}
     ports: ["8000:8000"]
-    depends_on: [db, obj, cache]
+    depends_on: [db, obj]
 
   web:
     build: ../services/web
@@ -290,7 +166,6 @@ volumes:
   minio_data:
 DC
 
-          # scripts
           cat > scripts/minio_make_bucket.sh <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -308,12 +183,9 @@ SH
           git config user.name "github-actions[bot]" >/dev/null 2>&1 || true
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com" >/dev/null 2>&1 || true
           git add -A
-          if git commit -m "scaffold: add coastal-bim-ai scaffold (no CI file)" ; then
+          if git commit -m "scaffold: add coastal-bim-ai scaffold (no CI file)"; then
             git push
             echo "Scaffold committed and pushed."
           else
             echo "No changes to commit."
           fi
-
-      - name: Done
-        run: echo "Bootstrap finished. Inspect repo root for scaffold files."
