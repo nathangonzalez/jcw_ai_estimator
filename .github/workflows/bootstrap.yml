@@ -1,4 +1,4 @@
-name: Bootstrap scaffold (streamlined)
+name: Bootstrap scaffold (minimal, robust)
 permissions:
   contents: write
 
@@ -13,134 +13,45 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create scaffold files
+      - name: Create minimal scaffold and commit
         run: |
           set -euo pipefail
-          ROOT="$(pwd)"
-          echo "Creating scaffold in $ROOT"
+          echo "Working dir: $(pwd)"
+          # create directories
+          mkdir -p services/api/app services/plan-ai/app services/bim/app services/gis/app services/web/pages infra scripts
 
-          # directories
-          mkdir -p services/api/app services/plan-ai/app services/bim/app services/gis/app services/web/pages infra/traefik scripts templates
-
-          # README
-          cat > README.md <<'README'
-# Coastal BIM AI (scaffold inside jcw_ai_estimator)
-
-Monorepo: AI plan reading → BIM/QTO → estimating, with Florida coastal risk overlays.
-
-Quick start:
-1) Install Docker & Docker Compose.
-2) Copy `.env.example` to `.env` and adjust secrets.
-3) `docker compose -f infra/docker-compose.yml up --build`
-4) Web UI: http://localhost:3000  | API: http://localhost:8000/docs
-README
+          # README (minimal)
+          printf '%s\n' "# Coastal BIM AI" "" "Monorepo scaffold (minimal)" "" "Quick start: copy .env.example -> .env; cd infra; docker compose up --build" > README.md
 
           # env example
-          cat > .env.example <<'ENV'
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=coastal
-MINIO_ROOT_USER=minio
-MINIO_ROOT_PASSWORD=minio123
-S3_ENDPOINT=http://obj:9000
-S3_BUCKET=plans
-S3_REGION=us-east-1
-JWT_SECRET=change_me
-ENV
+          printf 'POSTGRES_USER=postgres\nPOSTGRES_PASSWORD=postgres\nPOSTGRES_DB=coastal\n' > .env.example
 
-          # minimal .gitignore
-          cat > .gitignore <<'GITIGNORE'
-# Python
-__pycache__/
-*.pyc
-.venv/
-.env
+          # .gitignore (minimal)
+          printf '%s\n' "__pycache__/" "*.pyc" ".venv/" ".env" "node_modules/" ".next/" "dist/" > .gitignore
 
-# Node
-node_modules/
-.next/
-dist/
-
-# Data
-backend/data/*
-!backend/data/.gitkeep
-models/*
-!backend/models/.gitkeep
-
-# OS
-.DS_Store
-GITIGNORE
-
-          # API placeholder
+          # minimal API health
           mkdir -p services/api/app
-          cat > services/api/app/main.py <<'PY'
-from fastapi import FastAPI
-app = FastAPI(title="Coastal BIM AI API")
-@app.get("/health")
-def health(): return {"ok": True}
-PY
+          printf '%s\n' "from fastapi import FastAPI" "" "app = FastAPI(title='Coastal BIM AI API')" "" "@app.get('/health')" "def health(): return {'ok': True}" > services/api/app/main.py
 
-          # Plan-AI placeholder
-          mkdir -p services/plan-ai/app
-          cat > services/plan-ai/app/worker.py <<'PY'
-from fastapi import FastAPI
-app = FastAPI(title="Plan-AI Service")
-@app.get("/health")
-def health(): return {"ok": True}
-PY
+          # minimal web page
+          mkdir -p services/web/pages
+          printf '%s\n' "export default function Home() {" "  return (<main style={{padding:20}}><h1>Coastal BIM AI</h1><p>API: <code>/api/health</code></p></main>);" "}" > services/web/pages/index.js
 
-          # BIM/GIS/Web minimal files
-          mkdir -p services/bim/app services/gis/app services/web/pages
-          cat > services/bim/app/main.py <<'PY'
-from fastapi import FastAPI
-app = FastAPI(title="BIM/QTO Service")
-@app.get("/health")
-def health(): return {"ok": True}
-PY
-
-          cat > services/gis/app/main.py <<'PY'
-from fastapi import FastAPI
-app = FastAPI(title="GIS Service")
-@app.get("/health")
-def health(): return {"ok": True}
-PY
-
-          cat > services/web/pages/index.js <<'JS'
-export default function Home() {
-  return (<main style={{padding:20}}><h1>Coastal BIM AI</h1><p>API: <code>/api/health</code></p></main>);
-}
-JS
-
-          # infra: minimal docker-compose
-          mkdir -p infra
-          cat > infra/docker-compose.yml <<'DC'
-version: "3.9"
-services:
-  api:
-    build: ../services/api
-    ports: ["8000:8000"]
-  web:
-    build: ../services/web
-    ports: ["3000:3000"]
-DC
-
-          # make helper script
-          cat > scripts/minio_make_bucket.sh <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
-echo "Placeholder: ensure MinIO bucket (run locally if needed)"
-SH
+          # small helper script
+          printf '%s\n' "#!/usr/bin/env bash" "set -euo pipefail" "echo 'Placeholder: create bucket locally using mc or cloud provider'" > scripts/minio_make_bucket.sh
           chmod +x scripts/minio_make_bucket.sh
 
-          # commit & push (safe: will not create workflows)
+          # minimal infra compose
+          mkdir -p infra
+          printf '%s\n' 'version: "3.9"' 'services:' '  api:' '    build: ../services/api' '    ports: ["8000:8000"]' '  web:' '    build: ../services/web' '    ports: ["3000:3000"]' > infra/docker-compose.yml
+
+          # commit & push (GITHUB_TOKEN has contents: write; this will not create/update workflow files)
           git config user.name "github-actions[bot]" >/dev/null 2>&1 || true
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com" >/dev/null 2>&1 || true
           git add -A
-          if git commit -m "scaffold: add streamlined coastal-bim-ai scaffold"; then
+          if git commit -m "scaffold: add minimal coastal-bim-ai scaffold"; then
             git push
             echo "Scaffold committed and pushed."
           else
             echo "No changes to commit."
           fi
-      - name: Done
-        run: echo "Bootstrap finished. Inspect repo root for scaffold files."
