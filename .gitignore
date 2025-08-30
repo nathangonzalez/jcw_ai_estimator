@@ -1,7 +1,48 @@
+# Python
 __pycache__/
 *.pyc
 .venv/
 .env
+
+# Node
 node_modules/
 .next/
 dist/
+
+# Data
+backend/data/*
+!backend/data/.gitkeep
+models/*
+!backend/models/.gitkeep
+
+# OS
+.DS_Store
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.venv/
+__pycache__/
+
+# Temp & local runs
+*.log
+*.tmp
+*.bak
+*.swp
+*.coverage
+/.continue/
+
+# Large installers & SDKs
+*.exe
+*.msi
+*.zip
+/google-cloud-sdk/
+/google-cloud-sdk.zip
+/GoogleCloudSDKInstaller.exe
+/python-*.exe
+
+# Local artifacts & samples
+/backend/test.*
+/test_blueprint.*
+
