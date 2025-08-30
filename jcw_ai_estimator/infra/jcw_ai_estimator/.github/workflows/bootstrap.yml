@@ -1,0 +1,57 @@
+name: Bootstrap scaffold (minimal, robust)
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create minimal scaffold and commit
+        run: |
+          set -euo pipefail
+          echo "Working dir: $(pwd)"
+          # create directories
+          mkdir -p services/api/app services/plan-ai/app services/bim/app services/gis/app services/web/pages infra scripts
+
+          # README (minimal)
+          printf '%s\n' "# Coastal BIM AI" "" "Monorepo scaffold (minimal)" "" "Quick start: copy .env.example -> .env; cd infra; docker compose up --build" > README.md
+
+          # env example
+          printf 'POSTGRES_USER=postgres\nPOSTGRES_PASSWORD=postgres\nPOSTGRES_DB=coastal\n' > .env.example
+
+          # .gitignore (minimal)
+          printf '%s\n' "__pycache__/" "*.pyc" ".venv/" ".env" "node_modules/" ".next/" "dist/" > .gitignore
+
+          # minimal API health
+          mkdir -p services/api/app
+          printf '%s\n' "from fastapi import FastAPI" "" "app = FastAPI(title='Coastal BIM AI API')" "" "@app.get('/health')" "def health(): return {'ok': True}" > services/api/app/main.py
+
+          # minimal web page
+          mkdir -p services/web/pages
+          printf '%s\n' "export default function Home() {" "  return (<main style={{padding:20}}><h1>Coastal BIM AI</h1><p>API: <code>/api/health</code></p></main>);" "}" > services/web/pages/index.js
+
+          # small helper script
+          printf '%s\n' "#!/usr/bin/env bash" "set -euo pipefail" "echo 'Placeholder: create bucket locally using mc or cloud provider'" > scripts/minio_make_bucket.sh
+          chmod +x scripts/minio_make_bucket.sh
+
+          # minimal infra compose
+          mkdir -p infra
+          printf '%s\n' 'version: "3.9"' 'services:' '  api:' '    build: ../services/api' '    ports: ["8000:8000"]' '  web:' '    build: ../services/web' '    ports: ["3000:3000"]' > infra/docker-compose.yml
+
+          # commit & push (GITHUB_TOKEN has contents: write; this will not create/update workflow files)
+          git config user.name "github-actions[bot]" >/dev/null 2>&1 || true
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com" >/dev/null 2>&1 || true
+          git add -A
+          if git commit -m "scaffold: add minimal coastal-bim-ai scaffold"; then
+            git push
+            echo "Scaffold committed and pushed."
+          else
+            echo "No changes to commit."
+          fi
